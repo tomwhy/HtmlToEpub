@@ -8,14 +8,33 @@ class Chapter:
     title: str
     content: str
 
-class Ebook:
+class Resource:
+    def __init__(self, content: bytes, type: str, ext: str):
+        self._content = content
+        self._type = type
+        self._ext = ext
+
+    @property
+    def filename(self):
+        return f"resources/{str(hash(self._content))}.{self._ext}"
+    
+    @property
+    def content(self):
+        return self._content
+    
+    @property
+    def type(self):
+        return self._type
+
+
+class Book:
     def __init__(self, title: str, lang: str = "en", author: str = ""):
         self._book = epub.EpubBook()
 
         self._book.set_title(title)
         self._book.set_language(lang)
 
-        book_id = hex(hash(title + author))
+        book_id = str(hash(title + author))
         self._book.set_identifier(book_id)
 
         if author:
@@ -27,8 +46,11 @@ class Ebook:
         self._book.spine = ['nav']
         self._book.toc = []
 
+        self._resources = {}
+
+
     def __create_epub_chapter(self, chapter: Chapter, include_title: bool = True) -> epub.EpubHtml:
-        chapter_filename = f"{chapter.title}.xhtml"
+        chapter_filename = f"{hash(chapter.title)}.xhtml"
         epub_chapter = epub.EpubHtml(title=chapter.title, file_name=chapter_filename)
         epub_chapter.add_item(self._book_css)
 
@@ -39,6 +61,10 @@ class Ebook:
 
         self._book.add_item(epub_chapter)
         return epub_chapter
+
+    def add_ebook_resource(self, resource: Resource):
+        item = epub.EpubItem(file_name=resource.filename, media_type=resource.type, content=resource.content)
+        self._resources[resource.filename] = item
 
     def add_chapter(self, chapter: Chapter):
         epub_chapter = self.__create_epub_chapter(chapter)
@@ -53,6 +79,9 @@ class Ebook:
         self._book.spine.extend(epub_chapters)
 
     def write_ebook(self, path: str):
+        for resource in self._resources.values():
+            self._book.add_item(resource)
+
         self._book.add_item(epub.EpubNcx())
         self._book.add_item(epub.EpubNav())
 
