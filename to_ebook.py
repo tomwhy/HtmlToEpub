@@ -4,6 +4,7 @@ from typing import Generator, Tuple, List
 from tqdm import tqdm
 from dataclasses import dataclass
 
+import re
 import mimetypes
 import requests
 import ebook
@@ -53,8 +54,16 @@ def get_image(url: str) -> bytes:
     return img_ans.content
 
 
-def parse_chapter(chapter: WormChapter) -> Tuple[ebook.Chapter, List[ebook.Resource]]:
-    resources: List[ebook.Resource] = []
+def filter_tags(chapter: WormChapter):
+    for tag in chapter.content.find_all("a", string=re.compile("Chapter")):
+        tag.extract()
+    
+    for tag in chapter.content.find_all(id="jp-post-flair"):
+        tag.extract()
+        
+
+def parse_images(chapter: WormChapter) -> List[ebook.Resource]:
+    images = []
 
     for img in chapter.content.find_all("img"):
         img_type = mimetypes.guess_type(img["src"])[0]
@@ -62,8 +71,18 @@ def parse_chapter(chapter: WormChapter) -> Tuple[ebook.Chapter, List[ebook.Resou
             raise RuntimeError("failed gussing img mime type")
         
         image_bytes = get_image(img["src"])
-        resources.append(ebook.Resource(image_bytes, img_type, Path(img["src"]).suffix[1:]))
-        img["src"] = resources[-1].filename
+        images.append(ebook.Resource(image_bytes, img_type, Path(img["src"]).suffix[1:]))
+        img["src"] = images[-1].filename
+    
+    return images
+
+
+
+def parse_chapter(chapter: WormChapter) -> Tuple[ebook.Chapter, List[ebook.Resource]]:
+    resources: List[ebook.Resource] = []
+
+    filter_tags(chapter)
+    resources.extend(parse_images(chapter))
 
     return ebook.Chapter(chapter.title.text, "".join([str(t) for t in chapter.content.children])), resources
 
