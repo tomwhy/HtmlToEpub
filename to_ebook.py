@@ -65,7 +65,7 @@ def parse_chapter(chapter: WormChapter) -> Tuple[ebook.Chapter, List[ebook.Resou
         resources.append(ebook.Resource(image_bytes, img_type, Path(img["src"]).suffix[1:]))
         img["src"] = resources[-1].filename
 
-    return ebook.Chapter(chapter.title.text.replace("#", "_"), "".join([str(t) for t in chapter.content.children])), resources
+    return ebook.Chapter(chapter.title.text, "".join([str(t) for t in chapter.content.children])), resources
 
 
 def parse_book(title: str, author: str) -> ebook.Book:
