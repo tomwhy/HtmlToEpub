@@ -3,6 +3,8 @@ from typing import List, Union
 from dataclasses import dataclass
 from pathlib import Path
 
+SECTION_PAGE_TEMPLATE = "<div class=section_page>{name}</div>"
+
 @dataclass
 class Chapter:
     title: str
@@ -74,8 +76,10 @@ class Book:
 
     def add_section(self, name: str, chapters: List[Chapter]):
         epub_chapters = [self.__create_epub_chapter(c) for c in chapters]
+        section_page = self.__create_epub_chapter(Chapter(name, SECTION_PAGE_TEMPLATE.format(name=name)), include_title=False)
 
-        self._book.toc.append((epub.Section(name), epub_chapters))
+        self._book.toc.append((epub.Section(name, href=section_page.file_name), epub_chapters))
+        self._book.spine.append(section_page)
         self._book.spine.extend(epub_chapters)
 
     def write_ebook(self, path: str):

@@ -16,6 +16,8 @@ POST_FLAIR_SELECTOR = r"#jp-post-flair"
 WORM_START_URL = r"https://parahumans.wordpress.com/2011/06/11/1-1/"
 WORM_TOC_URL = r"https://parahumans.wordpress.com/table-of-contents/"
 
+ARC_REGEX = re.compile(r"^(?P<arc_name>\w+)\s+(?P<arc_num>(?:\d+|e).*?(?:.\d+)?)\s*(?:\(.*?\))?$")
+
 def select_tag(html: BeautifulSoup, selector: str) -> Tag:
     tag = html.select_one(selector)
 
@@ -72,6 +74,17 @@ class WormChapter:
         return self._title.text
 
     @property
+    def arc(self) -> str:
+        match = ARC_REGEX.match(self.title)
+
+        # a special case that the regex does not catch
+        if match is None and self.title == "Interlude: End":
+            return "Interlude"
+
+        assert match is not None and match["arc_name"] is not None
+        return match["arc_name"]
+
+    @property
     def ebook_chapter(self) -> ebook.Chapter:
         if self._ebook_chapter is None:
             self.__parse()
@@ -122,12 +135,25 @@ def worm_chapters() -> Generator[WormChapter, None, None]:
 
 def parse_book(title: str, author: str) -> ebook.Book:
     book = ebook.Book(title, author=author)
-    
+    current_arc = ""
+    arc_chapters: List[ebook.Chapter] = []
+
     for chapter in worm_chapters():
+        if chapter.arc != current_arc and chapter.arc != "Interlude":
+            if arc_chapters:
+                book.add_section(current_arc, arc_chapters)
+
+            arc_chapters = []
+            current_arc = chapter.arc
+
         for resource in chapter.resources:
             book.add_ebook_resource(resource)
 
-        book.add_chapter(chapter.ebook_chapter)
+        arc_chapters.append(chapter.ebook_chapter)
+
+    # add the last arc
+    if arc_chapters:
+        book.add_section(current_arc, arc_chapters)
 
     return book
 
