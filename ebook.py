@@ -50,6 +50,10 @@ class Book:
 
         self._resources = {}
 
+    def set_cover(self, cover_path: str):
+        ext = Path(cover_path).suffix[1:]
+        self._book.set_cover(f"cover.{ext}", Path(cover_path).read_bytes())
+        self._book.spine.insert(0, "cover")
 
     def __create_epub_chapter(self, chapter: Chapter, include_title: bool = True) -> epub.EpubHtml:
         chapter_filename = f"{hash(chapter.title)}.xhtml"
