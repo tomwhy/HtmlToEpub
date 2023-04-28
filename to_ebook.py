@@ -1,7 +1,7 @@
 from pathlib import Path
 from bs4 import BeautifulSoup, Tag
 from typing import Generator, Tuple, List, Union
-from tqdm import tqdm
+from tqdm import trange
 from dataclasses import dataclass
 
 import re
@@ -13,6 +13,7 @@ TITLE_SELECTOR = r".entry-title"
 CONTENT_SELECTOR = r".entry-content"
 
 WORM_START_URL = r"https://parahumans.wordpress.com/2011/06/11/1-1/"
+WORM_TOC_URL = r"https://parahumans.wordpress.com/table-of-contents/"
 
 def select_tag(html: BeautifulSoup, selector: str) -> Tag:
     tag = html.select_one(selector)
@@ -93,31 +94,39 @@ def get_page(url: str) -> BeautifulSoup:
     return BeautifulSoup(ans.text, features="lxml")
 
 
-def worm_chapters(url: str) -> Generator[WormChapter, None, None]:
-    while True:
-        page = get_page(url)
-        yield WormChapter(page)
+def get_worm_num_chapters() -> int:
+    toc_page = get_page(WORM_TOC_URL)
 
-        next_page_link = page.select_one(r'a[rel="next"]')
-        if next_page_link is None:
-            return
+    toc = select_tag(toc_page, CONTENT_SELECTOR)
+    return len(re.findall(r"(?:\d+|E)\.(?:\d+|\w)", toc.text))
 
-        url = str(next_page_link["href"])
+
+def worm_chapters() -> Generator[WormChapter, None, None]:
+    url = WORM_START_URL
+    
+    with trange(get_worm_num_chapters()) as t:
+        for _ in t:
+            page = get_page(url)
+            chapter = WormChapter(page)
+            
+            t.set_description(f"Parsing {chapter.title}")
+            yield chapter
+            
+            next_page_link = page.select_one(r'a[rel="next"]')
+            if next_page_link is None:
+                raise RuntimeError("failed getting next page url")
+
+            url = str(next_page_link["href"])
 
 
 def parse_book(title: str, author: str) -> ebook.Book:
     book = ebook.Book(title, author=author)
+    
+    for chapter in worm_chapters():
+        for resource in chapter.resources:
+            book.add_ebook_resource(resource)
 
-    with tqdm() as t:
-        for chapter in worm_chapters(WORM_START_URL):
-            t.set_description(f"Parsing {chapter.title}")
-
-            for resource in chapter.resources:
-                book.add_ebook_resource(resource)
-
-            book.add_chapter(chapter.ebook_chapter)
-
-            t.update()
+        book.add_chapter(chapter.ebook_chapter)
 
     return book
 
