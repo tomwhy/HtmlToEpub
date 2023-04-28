@@ -18,6 +18,8 @@ WORM_TOC_URL = r"https://parahumans.wordpress.com/table-of-contents/"
 
 ARC_REGEX = re.compile(r"^(?P<arc_name>\w+)\s+(?P<arc_num>(?:\d+|e).*?(?:.\d+)?)\s*(?:\(.*?\))?$")
 
+WORM_COVER_PATH = r"wormCover.jpg"
+
 def select_tag(html: BeautifulSoup, selector: str) -> Tag:
     tag = html.select_one(selector)
 
@@ -135,6 +137,8 @@ def worm_chapters() -> Generator[WormChapter, None, None]:
 
 def parse_book(title: str, author: str) -> ebook.Book:
     book = ebook.Book(title, author=author)
+    book.set_cover(WORM_COVER_PATH)
+
     current_arc = ""
     arc_chapters: List[ebook.Chapter] = []
 
