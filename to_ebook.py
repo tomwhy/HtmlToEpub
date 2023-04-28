@@ -11,6 +11,7 @@ import ebook
 
 TITLE_SELECTOR = r".entry-title"
 CONTENT_SELECTOR = r".entry-content"
+POST_FLAIR_SELECTOR = r"#jp-post-flair"
 
 WORM_START_URL = r"https://parahumans.wordpress.com/2011/06/11/1-1/"
 WORM_TOC_URL = r"https://parahumans.wordpress.com/table-of-contents/"
@@ -46,7 +47,7 @@ class WormChapter:
         for tag in self._content.find_all("a", string=re.compile("Chapter")):
             tag.extract()
     
-        for tag in self._content.find_all(id="jp-post-flair"):
+        for tag in self._content.select(POST_FLAIR_SELECTOR):
             tag.extract()
 
     def __extract_images(self):
